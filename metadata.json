@@ -1,0 +1,6 @@
+{
+  "name": "Daily Planner",
+  "description": "A responsive, feature-rich daily planner app with Timeline, 10-Minute Blocks grid, and Project views.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
