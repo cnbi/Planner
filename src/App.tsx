@@ -22,6 +22,14 @@ import { ItemModal } from './components/ItemModal';
 import { BlockDetailModal } from './components/BlockDetailModal';
 import { PinLockScreen } from './components/PinLockScreen';
 import { SettingsModal } from './components/SettingsModal';
+import { NotificationBanner } from './components/NotificationBanner';
+import {
+  ActiveReminder,
+  checkUpcomingReminders,
+  snoozeReminder,
+  triggerReminderAlert,
+  requestNotificationPermission,
+} from './utils/notifications';
 
 export default function App() {
   const [items, setItems] = useState<PlannerItem[]>([]);
@@ -34,6 +42,9 @@ export default function App() {
   const [pinLockMode, setPinLockMode] = useState<'setup' | 'unlock' | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
+  // Active Reminders Toast Banner State
+  const [activeReminders, setActiveReminders] = useState<ActiveReminder[]>([]);
+
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<PriorityLevel | 'all'>('all');
@@ -45,6 +56,47 @@ export default function App() {
   const [editingItem, setEditingItem] = useState<Partial<PlannerItem> | undefined>(undefined);
   const [selectedBlock, setSelectedBlock] = useState<BlockStatus | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+
+  // In-App Reminder Handler
+  const handleInAppReminder = (newReminder: ActiveReminder) => {
+    setActiveReminders((prev) => {
+      // Don't duplicate if already present
+      if (prev.some((r) => r.id === newReminder.id || (r.itemId === newReminder.itemId && Math.abs(r.triggerTime - newReminder.triggerTime) < 5000))) {
+        return prev;
+      }
+      return [...prev, newReminder];
+    });
+  };
+
+  const handleDismissReminder = (reminderId: string) => {
+    setActiveReminders((prev) => prev.filter((r) => r.id !== reminderId));
+  };
+
+  const handleSnoozeReminder = (itemId: string, reminderId: string) => {
+    snoozeReminder(itemId, 5);
+    setActiveReminders((prev) => prev.filter((r) => r.id !== reminderId));
+  };
+
+  const handleTestNotification = () => {
+    const dummyItem: PlannerItem = {
+      id: `test_${Date.now()}`,
+      title: 'Sample Task Starting Soon',
+      date: getTodayISO(),
+      startTime: '15:00',
+      durationMinutes: 30,
+      type: 'task',
+      priority: 'high',
+      isDone: false,
+      color: 'indigo',
+      tags: ['Test'],
+      checklist: [],
+      repeat: 'none',
+      reminders: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    triggerReminderAlert(dummyItem, projects[0], handleInAppReminder);
+  };
 
   // Initialize data & check PIN on mount
   useEffect(() => {
@@ -74,6 +126,30 @@ export default function App() {
       setPinLockMode(null);
     }
   }, []);
+
+  // Request Notification permission on first unlock/interaction if default
+  useEffect(() => {
+    if (isAuthenticated && typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        requestNotificationPermission();
+      }
+    }
+  }, [isAuthenticated]);
+
+  // Periodic Reminder Engine (Runs every 15 seconds)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // Run initial check immediately
+    checkUpcomingReminders(items, projects, handleInAppReminder);
+
+    // Set up 15-second loop
+    const interval = setInterval(() => {
+      checkUpcomingReminders(items, projects, handleInAppReminder);
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [items, projects, isAuthenticated]);
 
   const handleUnlockSuccess = () => {
     setIsAuthenticated(true);
@@ -307,6 +383,13 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100/60 text-slate-900 font-sans flex flex-col">
+      {/* 5-Minute In-App Active Reminder Toast Banner */}
+      <NotificationBanner
+        reminders={activeReminders}
+        onDismiss={handleDismissReminder}
+        onSnooze={handleSnoozeReminder}
+      />
+
       {/* Lock Screen if manually locked or unauthenticated */}
       {!isAuthenticated && pinLockMode && (
         <PinLockScreen
@@ -407,6 +490,7 @@ export default function App() {
         onClose={() => setIsSettingsOpen(false)}
         onLockApp={handleLockApp}
         onResetData={handleResetData}
+        onTestNotification={handleTestNotification}
       />
     </div>
   );

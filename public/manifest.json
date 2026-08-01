@@ -1,0 +1,22 @@
+{
+  "short_name": "Planner",
+  "name": "Day Planner & Reminders",
+  "description": "Smart daily planner with timeline, 10-minute blocks, project organization and automated task reminders.",
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#4f46e5",
+  "display": "standalone",
+  "orientation": "portrait"
+}

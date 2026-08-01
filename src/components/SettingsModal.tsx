@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { X, KeyRound, Lock, RotateCcw, Shield, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, KeyRound, Lock, RotateCcw, Shield, CheckCircle2, AlertCircle, Bell, Volume2, Smartphone } from 'lucide-react';
 import { getSavedPin, savePin } from '../utils/storage';
+import { requestNotificationPermission, isNotificationGranted } from '../utils/notifications';
+import { playNotificationChime } from '../utils/audio';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLockApp: () => void;
   onResetData: () => void;
+  onTestNotification?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -14,8 +17,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   onLockApp,
   onResetData,
+  onTestNotification,
 }) => {
-  const [activeTab, setActiveTab] = useState<'security' | 'data'>('security');
+  const [activeTab, setActiveTab] = useState<'security' | 'notifications' | 'data'>('security');
+  const [notifPermission, setNotifPermission] = useState<string>(
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported'
+  );
 
   // Change PIN State
   const [currentPinInput, setCurrentPinInput] = useState('');
@@ -25,6 +32,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [pinSuccess, setPinSuccess] = useState('');
 
   if (!isOpen) return null;
+
+  const handleRequestPermission = async () => {
+    const res = await requestNotificationPermission();
+    setNotifPermission(res);
+  };
 
   const handleChangePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +78,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900">App Settings</h3>
-              <p className="text-xs text-slate-500">Security & Planner Preferences</p>
+              <p className="text-xs text-slate-500">Security, Reminders & PWA</p>
             </div>
           </div>
 
@@ -79,31 +91,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-slate-100 px-6 pt-3 bg-white">
+        <div className="flex border-b border-slate-100 px-6 pt-3 bg-white gap-2">
           <button
             type="button"
             onClick={() => setActiveTab('security')}
-            className={`flex items-center gap-2 pb-3 px-1 text-xs font-bold border-b-2 transition-all ${
+            className={`flex items-center gap-1.5 pb-3 px-1 text-xs font-bold border-b-2 transition-all ${
               activeTab === 'security'
                 ? 'border-indigo-600 text-indigo-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            <KeyRound className="w-4 h-4" />
+            <KeyRound className="w-3.5 h-3.5" />
             <span>PIN Security</span>
           </button>
 
           <button
             type="button"
+            onClick={() => setActiveTab('notifications')}
+            className={`flex items-center gap-1.5 pb-3 px-2 text-xs font-bold border-b-2 transition-all ${
+              activeTab === 'notifications'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Bell className="w-3.5 h-3.5" />
+            <span>5m Alerts</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('data')}
-            className={`flex items-center gap-2 pb-3 px-3 text-xs font-bold border-b-2 transition-all ${
+            className={`flex items-center gap-1.5 pb-3 px-2 text-xs font-bold border-b-2 transition-all ${
               activeTab === 'data'
                 ? 'border-indigo-600 text-indigo-600'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            <RotateCcw className="w-4 h-4" />
-            <span>Data Management</span>
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Data</span>
           </button>
         </div>
 
@@ -208,6 +233,80 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           )}
 
+          {activeTab === 'notifications' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-100 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                    <Bell className="w-4 h-4 text-indigo-600" />
+                    Automatic 5-Minute Pre-Alerts
+                  </span>
+                  <span
+                    className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                      notifPermission === 'granted'
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : 'bg-amber-100 text-amber-800 border border-amber-300'
+                    }`}
+                  >
+                    {notifPermission === 'granted' ? 'Enabled' : notifPermission}
+                  </span>
+                </div>
+                <p className="text-xs text-indigo-900/80 leading-relaxed">
+                  The planner automatically calculates and triggers reminders <strong>5 minutes before</strong> the start time of every scheduled event in Timeline, Blocks, and Projects.
+                </p>
+              </div>
+
+              {/* Request Permission Button */}
+              {notifPermission !== 'granted' && (
+                <button
+                  type="button"
+                  onClick={handleRequestPermission}
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2"
+                >
+                  <Bell className="w-4 h-4" />
+                  <span>Enable Browser Notifications</span>
+                </button>
+              )}
+
+              {/* Sound & Alert Test Buttons */}
+              <div className="pt-2 border-t border-slate-100 space-y-2">
+                <h5 className="text-xs font-bold text-slate-800">Alert Feedback & Testing</h5>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => playNotificationChime()}
+                    className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold transition-all"
+                  >
+                    <Volume2 className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Test Audio Chime</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onTestNotification) {
+                        onTestNotification();
+                      }
+                    }}
+                    className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 text-xs font-bold transition-all"
+                  >
+                    <Bell className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Test 5m Alert Toast</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* PWA Information */}
+              <div className="pt-2 border-t border-slate-100 flex items-center gap-3 text-slate-600">
+                <Smartphone className="w-5 h-5 text-indigo-600 shrink-0" />
+                <div className="text-[11px] leading-tight">
+                  <strong>Mobile & PWA Ready:</strong> Includes Service Worker and Web Manifest for Home Screen installation and background alerts.
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'data' && (
             <div className="space-y-4">
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
@@ -239,3 +338,4 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     </div>
   );
 };
+
