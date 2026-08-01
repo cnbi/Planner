@@ -17,25 +17,27 @@ export const BlocksView: React.FC<BlocksViewProps> = ({
   onSelectBlock,
   onOpenCreateModal,
 }) => {
-  const dayBlocks = calculateBlocksForDay(items);
+  const dayBlocks = calculateBlocksForDay(items, currentDate);
 
   // Stats calculation
   const totalBlocks = 24 * 6; // 144 blocks
   let filledBlocksCount = 0;
-  let completedBlocksCount = 0;
+  let happeningBlocksCount = 0;
+  let freeBlocksCount = 0;
 
   dayBlocks.forEach((hourBlocks) => {
     hourBlocks.forEach((block) => {
-      if (block.state !== 'empty') {
+      if (block.state === 'filled') {
         filledBlocksCount++;
-        if (block.state === 'completed') {
-          completedBlocksCount++;
-        }
+      } else if (block.state === 'half') {
+        happeningBlocksCount++;
+      } else {
+        freeBlocksCount++;
       }
     });
   });
 
-  const scheduledMins = filledBlocksCount * 10;
+  const scheduledMins = (filledBlocksCount + happeningBlocksCount) * 10;
   const hoursScheduled = (scheduledMins / 60).toFixed(1);
 
   return (
@@ -53,17 +55,17 @@ export const BlocksView: React.FC<BlocksViewProps> = ({
         </div>
 
         {/* Legend */}
-        <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-700 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/60">
-          <div className="flex items-center gap-1.5">
-            <div className="w-4 h-4 rounded-full bg-indigo-500 shadow-xs" />
-            <span>Filled (Scheduled)</span>
+        <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-700 bg-slate-50 px-3.5 py-2.5 rounded-xl border border-slate-200/60">
+          <div className="flex items-center gap-1.5" title="Block that already happened">
+            <div className="w-4 h-4 rounded-full bg-slate-700 shadow-2xs flex items-center justify-center text-[9px] text-white font-bold">✓</div>
+            <span>Filled (Already Happened)</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-4 h-4 rounded-full border-2 border-indigo-500 bg-indigo-100/60" />
-            <span>Half-Filled (Active)</span>
+          <div className="flex items-center gap-1.5" title="Block that is happening right now">
+            <div className="w-4 h-4 rounded-full bg-[linear-gradient(90deg,#4f46e5_50%,#e2e8f0_50%)] border border-indigo-600 ring-2 ring-indigo-400/40" />
+            <span>Half-Filled (Happening Now)</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-4 h-4 rounded-full bg-slate-200 border border-slate-300" />
+          <div className="flex items-center gap-1.5" title="Block that is free time">
+            <div className="w-4 h-4 rounded-full bg-slate-50 border border-slate-300" />
             <span>Empty (Free Time)</span>
           </div>
         </div>
@@ -74,7 +76,7 @@ export const BlocksView: React.FC<BlocksViewProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {dayBlocks.map((hourBlocks, hour) => {
             const hourLabel = getHourLabel(hour);
-            const activeInHour = hourBlocks.filter((b) => b.state !== 'empty').length;
+            const filledInHour = hourBlocks.filter((b) => b.state === 'filled' || b.state === 'half').length;
 
             return (
               <div
@@ -85,7 +87,7 @@ export const BlocksView: React.FC<BlocksViewProps> = ({
                 <div className="w-20 shrink-0">
                   <span className="text-xs font-bold text-slate-700">{hourLabel}</span>
                   <div className="text-[10px] text-slate-400 font-medium">
-                    {activeInHour * 10}m active
+                    {filledInHour * 10}m elapsed/active
                   </div>
                 </div>
 
@@ -98,35 +100,74 @@ export const BlocksView: React.FC<BlocksViewProps> = ({
                       ? COLOR_THEMES[primary.color] || COLOR_THEMES.blue
                       : null;
 
-                    let circleStyle = 'bg-slate-200/90 border-slate-300 hover:scale-110';
-                    let inlineBg = '';
+                    let circleStyle = 'bg-slate-100 border border-slate-300 text-slate-500 hover:scale-110';
+                    let circleContent = (
+                      <span className="text-[9px] font-mono opacity-80">
+                        {block.blockIndex * 10}
+                      </span>
+                    );
 
-                    if (block.state === 'completed' && theme) {
-                      circleStyle = `${theme.dotBg} text-white shadow-xs hover:scale-110`;
-                    } else if (block.state === 'active' && theme) {
-                      circleStyle = `border-2 ${theme.border} ${theme.bgLight} hover:scale-110`;
-                    } else if (block.state === 'partial' && theme) {
-                      circleStyle = `border-2 ${theme.border} bg-white hover:scale-110`;
+                    if (block.state === 'filled') {
+                      // Block already happened
+                      if (theme) {
+                        circleStyle = `${theme.bgDark} text-white shadow-xs hover:scale-110`;
+                      } else {
+                        circleStyle = `bg-slate-500 border border-slate-600 text-white shadow-2xs hover:scale-110`;
+                      }
+                      circleContent = (
+                        <span className="text-[9px] font-bold">
+                          {block.primaryItem?.isDone ? '✓' : block.blockIndex * 10}
+                        </span>
+                      );
+                    } else if (block.state === 'half') {
+                      // Block is happening right now -> Half-filled circle
+                      const hexColor = theme ? theme.hex : '#4f46e5';
+                      circleStyle = `border-2 border-indigo-600 ring-2 ring-indigo-500/50 ring-offset-1 hover:scale-110 text-slate-900 font-bold shadow-sm`;
+                    } else if (block.state === 'empty') {
+                      // Free time / Future block
+                      if (theme) {
+                        circleStyle = `border-2 ${theme.border} bg-white text-slate-700 hover:scale-110`;
+                      } else {
+                        circleStyle = `bg-slate-50 border border-slate-300 text-slate-400 hover:bg-slate-100 hover:scale-110`;
+                      }
                     }
 
                     return (
                       <button
                         key={block.blockIndex}
                         onClick={() => onSelectBlock(block)}
+                        style={
+                          block.state === 'half'
+                            ? {
+                                background: `linear-gradient(90deg, ${
+                                  theme ? theme.hex : '#4f46e5'
+                                } 50%, #f1f5f9 50%)`,
+                              }
+                            : undefined
+                        }
                         className={`relative group/circle w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${circleStyle}`}
                         title={`${getHourLabel(hour)} ${blockMinuteText} ${
-                          primary ? `— ${primary.title}` : '(Free Block)'
-                        }`}
+                          block.state === 'filled'
+                            ? '(Already Happened)'
+                            : block.state === 'half'
+                            ? '(Happening Now)'
+                            : '(Free Time)'
+                        } ${primary ? `— ${primary.title}` : ''}`}
                       >
                         {/* Circle Label / Minute mark */}
-                        <span className="text-[9px] opacity-75 font-mono">
-                          {block.blockIndex * 10}
-                        </span>
+                        {circleContent}
 
                         {/* Tooltip on hover */}
                         <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover/circle:flex flex-col items-center z-30 pointer-events-none">
                           <div className="bg-slate-900 text-white text-[11px] font-semibold py-1 px-2.5 rounded-lg whitespace-nowrap shadow-lg">
                             {getHourLabel(hour)} ({blockMinuteText})
+                            <span className="ml-1.5 text-[10px] text-amber-300 font-bold">
+                              {block.state === 'filled'
+                                ? '• Happened'
+                                : block.state === 'half'
+                                ? '• Happening Now'
+                                : '• Free Time'}
+                            </span>
                             {primary && (
                               <div className="text-[10px] font-normal text-slate-300">
                                 {primary.title}

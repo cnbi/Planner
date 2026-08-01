@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Folder, FolderPlus, CheckCircle2, Circle, Clock, Tag, Plus, Trash2, Edit2, AlertCircle } from 'lucide-react';
+import { Folder, FolderPlus, CheckCircle2, Circle, Clock, Tag, Plus, Trash2, Edit2, AlertCircle, Repeat } from 'lucide-react';
 import { PlannerItem, Project, ColorThemeId } from '../types';
 import { COLOR_THEMES, COLOR_OPTIONS } from '../data/colors';
 import { formatTime12h } from '../utils/time';
@@ -361,6 +361,17 @@ const ProjectItemCard: React.FC<ProjectItemCardProps> = ({
                   @{t}
                 </span>
               ))}
+            </div>
+          )}
+
+          {item.repeat !== 'none' && (
+            <div className="mt-1.5 flex items-center gap-1">
+              <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200/60 inline-flex items-center gap-1">
+                <Repeat className="w-3 h-3 text-indigo-500" />
+                {item.repeat === 'custom'
+                  ? `Every ${item.repeatXDays || 1} days`
+                  : `Repeats ${item.repeat}`}
+              </span>
             </div>
           )}
         </div>

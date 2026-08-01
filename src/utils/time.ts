@@ -77,8 +77,17 @@ export function filterItemsForDate(items: PlannerItem[], dateStr: string): Plann
     if (item.date < dateStr) {
       if (item.repeat === 'daily') return true;
 
-      const itemDateObj = new Date(item.date);
-      const targetDateObj = new Date(dateStr);
+      const [iYear, iMonth, iDay] = item.date.split('-').map(Number);
+      const [tYear, tMonth, tDay] = dateStr.split('-').map(Number);
+      const itemDateObj = new Date(iYear, iMonth - 1, iDay);
+      const targetDateObj = new Date(tYear, tMonth - 1, tDay);
+
+      if (item.repeat === 'custom') {
+        const interval = item.repeatXDays && item.repeatXDays > 0 ? item.repeatXDays : 1;
+        const diffMs = targetDateObj.getTime() - itemDateObj.getTime();
+        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+        return diffDays >= 0 && diffDays % interval === 0;
+      }
 
       if (item.repeat === 'weekly') {
         return itemDateObj.getDay() === targetDateObj.getDay();
@@ -100,14 +109,29 @@ export interface BlockStatus {
   endMinute: number;
   items: PlannerItem[];
   primaryItem?: PlannerItem;
-  state: 'empty' | 'active' | 'completed' | 'partial';
+  state: 'filled' | 'half' | 'empty';
+  hasHappened: boolean;
+  isHappening: boolean;
+  isFreeTime: boolean;
 }
 
 /**
  * Calculates status for each 10-minute block of the day (144 total blocks).
+ * Filled: block that already happened
+ * Half-filled: block that is happening right now
+ * Empty: block that is free time / future
  */
-export function calculateBlocksForDay(dayItems: PlannerItem[]): BlockStatus[][] {
+export function calculateBlocksForDay(dayItems: PlannerItem[], currentDateStr?: string): BlockStatus[][] {
   const result: BlockStatus[][] = [];
+
+  const todayISO = getTodayISO();
+  const activeDate = currentDateStr || todayISO;
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const isPastDate = activeDate < todayISO;
+  const isFutureDate = activeDate > todayISO;
+  const isToday = activeDate === todayISO;
 
   for (let h = 0; h < 24; h++) {
     const hourBlocks: BlockStatus[] = [];
@@ -123,21 +147,38 @@ export function calculateBlocksForDay(dayItems: PlannerItem[]): BlockStatus[][] 
         return itemStart < blockEnd && itemEnd > blockStart;
       });
 
-      let state: BlockStatus['state'] = 'empty';
-      let primaryItem: PlannerItem | undefined = undefined;
+      const primaryItem = overlapping.length > 0 ? overlapping[0] : undefined;
 
-      if (overlapping.length > 0) {
-        primaryItem = overlapping[0];
-        const allCompleted = overlapping.every((i) => i.isDone);
-        const anyCompleted = overlapping.some((i) => i.isDone);
+      // Temporal block status according to user specification:
+      // Filled = block that already happened
+      // Half-filled = block that is happening
+      // Empty = free time
+      let hasHappened = false;
+      let isHappening = false;
+      let isFreeTime = false;
 
-        if (allCompleted) {
-          state = 'completed';
-        } else if (anyCompleted) {
-          state = 'partial';
+      if (isPastDate) {
+        hasHappened = true;
+      } else if (isFutureDate) {
+        isFreeTime = true;
+      } else {
+        // Today
+        if (blockEnd <= currentMinutes) {
+          hasHappened = true;
+        } else if (blockStart <= currentMinutes && currentMinutes < blockEnd) {
+          isHappening = true;
         } else {
-          state = 'active';
+          isFreeTime = true;
         }
+      }
+
+      let state: BlockStatus['state'] = 'empty';
+      if (hasHappened) {
+        state = 'filled';
+      } else if (isHappening) {
+        state = 'half';
+      } else {
+        state = 'empty';
       }
 
       hourBlocks.push({
@@ -148,6 +189,9 @@ export function calculateBlocksForDay(dayItems: PlannerItem[]): BlockStatus[][] 
         items: overlapping,
         primaryItem,
         state,
+        hasHappened,
+        isHappening,
+        isFreeTime,
       });
     }
 

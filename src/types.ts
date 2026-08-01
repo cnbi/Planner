@@ -36,6 +36,7 @@ export interface PlannerItem {
   startTime: string; // HH:mm format, e.g. "09:00" or "14:30"
   durationMinutes: number; // e.g. 10, 30, 60, 120
   repeat: RecurrenceType;
+  repeatXDays?: number; // e.g. every 2 days, every 3 days
   reminders: boolean;
   isDone: boolean;
   createdAt: string;

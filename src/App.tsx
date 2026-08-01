@@ -297,6 +297,7 @@ export default function App() {
             currentDate={currentDate}
             onToggleDone={handleToggleDone}
             onEditItem={handleEditItem}
+            onDeleteItem={handleDeleteItem}
             onQuickAddAtHour={handleQuickAddAtHour}
             onOpenCreateModal={handleOpenCreateModal}
           />

@@ -36,12 +36,14 @@ export const ItemModal: React.FC<ItemModalProps> = ({
   const [startTime, setStartTime] = useState<string>(initialItem?.startTime || '09:00');
   const [durationMinutes, setDurationMinutes] = useState<number>(initialItem?.durationMinutes || 30);
   const [repeat, setRepeat] = useState<RecurrenceType>(initialItem?.repeat || 'none');
+  const [repeatXDays, setRepeatXDays] = useState<number>(initialItem?.repeatXDays || 2);
   const [reminders, setReminders] = useState<boolean>(initialItem?.reminders ?? true);
   const [isDone, setIsDone] = useState<boolean>(initialItem?.isDone ?? false);
   const [checklist, setChecklist] = useState<ChecklistItem[]>(initialItem?.checklist || []);
 
   const [newSubtaskText, setNewSubtaskText] = useState('');
   const [newTagInput, setNewTagInput] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Auto-parse @tag and #project when titleInput changes
   useEffect(() => {
@@ -111,6 +113,7 @@ export const ItemModal: React.FC<ItemModalProps> = ({
       startTime,
       durationMinutes: Number(durationMinutes) || 30,
       repeat,
+      repeatXDays: repeat === 'custom' ? Math.max(1, Number(repeatXDays) || 1) : undefined,
       reminders,
       isDone,
       createdAt: initialItem?.createdAt || new Date().toISOString(),
@@ -426,9 +429,25 @@ export const ItemModal: React.FC<ItemModalProps> = ({
               >
                 <option value="none">None</option>
                 <option value="daily">Daily</option>
+                <option value="custom">Every X Days (Custom)</option>
                 <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>
               </select>
+
+              {repeat === 'custom' && (
+                <div className="mt-2 flex items-center gap-1.5 bg-indigo-50/80 p-2 rounded-xl border border-indigo-100">
+                  <span className="text-xs font-semibold text-indigo-900">Every</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={repeatXDays}
+                    onChange={(e) => setRepeatXDays(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-16 p-1 text-xs font-bold text-center border border-indigo-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                  <span className="text-xs font-semibold text-indigo-900">days</span>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between sm:justify-start gap-2 pt-5">
@@ -461,20 +480,42 @@ export const ItemModal: React.FC<ItemModalProps> = ({
           {/* Action Footer */}
           <div className="flex items-center justify-between pt-4 border-t border-slate-100">
             {initialItem?.id && onDelete ? (
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm('Are you sure you want to delete this planner item?')) {
-                    onDelete(initialItem.id!);
-                    onClose();
-                  }
-                }}
-                className="flex items-center gap-1 text-xs font-bold text-rose-600 hover:text-rose-700 px-3 py-2 rounded-xl hover:bg-rose-50 transition-all"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Delete Item</span>
-              </button>
-            ) : <div />}
+              <div>
+                {!showDeleteConfirm ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="flex items-center gap-1 text-xs font-bold text-rose-600 hover:text-rose-700 px-3 py-2 rounded-xl hover:bg-rose-50 transition-all border border-transparent hover:border-rose-200"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete Item</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 bg-rose-50 p-1.5 rounded-xl border border-rose-200">
+                    <span className="text-xs font-bold text-rose-900 px-1">Confirm delete?</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onDelete(initialItem.id!);
+                        onClose();
+                      }}
+                      className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg shadow-2xs"
+                    >
+                      Yes, Delete
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="px-2 py-1 text-slate-600 hover:text-slate-800 text-xs font-semibold"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div />
+            )}
 
             <div className="flex items-center gap-2">
               <button

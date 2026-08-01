@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Clock, Plus, Tag, Folder, AlertCircle, Bell, Repeat, Calendar } from 'lucide-react';
+import { Check, Clock, Plus, Tag, Folder, AlertCircle, Bell, Repeat, Calendar, Trash2 } from 'lucide-react';
 import { PlannerItem } from '../types';
 import { COLOR_THEMES } from '../data/colors';
 import { getHourLabel, timeToMinutes, formatTime12h, getTodayISO } from '../utils/time';
@@ -11,6 +11,7 @@ interface TimelineViewProps {
   onEditItem: (item: PlannerItem) => void;
   onQuickAddAtHour: (hour: number) => void;
   onOpenCreateModal: () => void;
+  onDeleteItem?: (itemId: string) => void;
 }
 
 export const TimelineView: React.FC<TimelineViewProps> = ({
@@ -20,6 +21,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   onEditItem,
   onQuickAddAtHour,
   onOpenCreateModal,
+  onDeleteItem,
 }) => {
   const isToday = currentDate === getTodayISO();
   const now = new Date();
@@ -194,9 +196,14 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                                 ))}
 
                                 {item.repeat !== 'none' && (
-                                  <span className="text-[10px] font-medium text-slate-500 flex items-center gap-0.5" title={`Repeats ${item.repeat}`}>
-                                    <Repeat className="w-3 h-3 text-slate-400" />
-                                    {item.repeat}
+                                  <span
+                                    className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200/60 flex items-center gap-0.5"
+                                    title={`Repeats ${item.repeat}`}
+                                  >
+                                    <Repeat className="w-3 h-3 text-indigo-500" />
+                                    {item.repeat === 'custom'
+                                      ? `Every ${item.repeatXDays || 1}d`
+                                      : item.repeat}
                                   </span>
                                 )}
 
@@ -206,6 +213,21 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                               </div>
                             </div>
                           </div>
+
+                          {/* Quick Delete Action */}
+                          {onDeleteItem && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteItem(item.id);
+                              }}
+                              className="opacity-0 group-hover/card:opacity-100 p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                              title="Delete Item"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       );
                     })}
