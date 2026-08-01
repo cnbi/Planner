@@ -73,21 +73,50 @@ export const BlocksView: React.FC<BlocksViewProps> = ({
 
       {/* Grid Container */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-6">
+        {/* New Day Marker Header */}
+        <div className="mb-4 flex items-center gap-3 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-amber-500/10 p-3 rounded-xl border border-indigo-200/80">
+          <span className="text-lg">🌅</span>
+          <div>
+            <div className="text-xs font-bold text-indigo-950 uppercase tracking-wider">
+              New Day Starts — 00:00 (12:00 AM Midnight)
+            </div>
+            <div className="text-[11px] text-slate-600 font-medium">
+              Showing all 24 hours of the day (00:00 to 23:00) with 6 x 10-minute blocks per hour
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {dayBlocks.map((hourBlocks, hour) => {
             const hourLabel = getHourLabel(hour);
+            const hour24Str = `${String(hour).padStart(2, '0')}:00`;
+            const isNewDayHour = hour === 0;
             const filledInHour = hourBlocks.filter((b) => b.state === 'filled' || b.state === 'half').length;
 
             return (
               <div
                 key={hour}
-                className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-100/60 transition-colors"
+                className={`relative flex items-center justify-between p-3 rounded-xl border transition-colors ${
+                  isNewDayHour
+                    ? 'border-indigo-300 bg-indigo-50/40 hover:bg-indigo-50/70 ring-1 ring-indigo-200/80'
+                    : 'border-slate-100 bg-slate-50/50 hover:bg-slate-100/60'
+                }`}
               >
+                {/* New Day Badge inside 00:00 card */}
+                {isNewDayHour && (
+                  <span className="absolute -top-2.5 right-3 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-600 text-white shadow-2xs">
+                    🌅 Midnight / Start
+                  </span>
+                )}
+
                 {/* Hour Label */}
-                <div className="w-20 shrink-0">
-                  <span className="text-xs font-bold text-slate-700">{hourLabel}</span>
+                <div className="w-24 shrink-0">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xs font-extrabold text-slate-800">{hour24Str}</span>
+                    <span className="text-[10px] font-semibold text-slate-500">({hourLabel})</span>
+                  </div>
                   <div className="text-[10px] text-slate-400 font-medium">
-                    {filledInHour * 10}m elapsed/active
+                    {filledInHour * 10}m active
                   </div>
                 </div>
 

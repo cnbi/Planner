@@ -8,6 +8,9 @@ import {
   loadViewMode,
   saveViewMode,
   resetPlannerData,
+  getSavedPin,
+  isSessionAuthenticated,
+  setSessionAuthenticated,
 } from './utils/storage';
 import { getTodayISO, filterItemsForDate, BlockStatus } from './utils/time';
 import { Header } from './components/Header';
@@ -17,12 +20,19 @@ import { BlocksView } from './components/BlocksView';
 import { ProjectView } from './components/ProjectView';
 import { ItemModal } from './components/ItemModal';
 import { BlockDetailModal } from './components/BlockDetailModal';
+import { PinLockScreen } from './components/PinLockScreen';
+import { SettingsModal } from './components/SettingsModal';
 
 export default function App() {
   const [items, setItems] = useState<PlannerItem[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentDate, setCurrentDate] = useState<string>(getTodayISO());
   const [viewMode, setViewMode] = useState<ViewMode>('timeline');
+
+  // PIN & Security State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [pinLockMode, setPinLockMode] = useState<'setup' | 'unlock' | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,7 +46,7 @@ export default function App() {
   const [selectedBlock, setSelectedBlock] = useState<BlockStatus | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
-  // Initialize data on mount
+  // Initialize data & check PIN on mount
   useEffect(() => {
     const loadedItems = loadItems();
     const loadedProjs = loadProjects();
@@ -49,7 +59,32 @@ export default function App() {
     if (loadedProjs.length > 0) {
       setSelectedProjectId(loadedProjs[0].id);
     }
+
+    const savedPin = getSavedPin();
+    const authed = isSessionAuthenticated();
+
+    if (!savedPin) {
+      setPinLockMode('setup');
+      setIsAuthenticated(false);
+    } else if (!authed) {
+      setPinLockMode('unlock');
+      setIsAuthenticated(false);
+    } else {
+      setIsAuthenticated(true);
+      setPinLockMode(null);
+    }
   }, []);
+
+  const handleUnlockSuccess = () => {
+    setIsAuthenticated(true);
+    setPinLockMode(null);
+  };
+
+  const handleLockApp = () => {
+    setSessionAuthenticated(false);
+    setIsAuthenticated(false);
+    setPinLockMode('unlock');
+  };
 
   // Sync viewMode changes to storage
   const handleViewChange = (mode: ViewMode) => {
@@ -261,8 +296,25 @@ export default function App() {
     setStatusFilter('all');
   };
 
+  if (!isAuthenticated && pinLockMode) {
+    return (
+      <PinLockScreen
+        mode={pinLockMode}
+        onUnlocked={handleUnlockSuccess}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-100/60 text-slate-900 font-sans flex flex-col">
+      {/* Lock Screen if manually locked or unauthenticated */}
+      {!isAuthenticated && pinLockMode && (
+        <PinLockScreen
+          mode={pinLockMode}
+          onUnlocked={handleUnlockSuccess}
+        />
+      )}
+
       {/* Navigation Header */}
       <Header
         currentDate={currentDate}
@@ -273,6 +325,8 @@ export default function App() {
         onResetData={handleResetData}
         completedCount={completedCount}
         totalCount={totalCount}
+        onLockApp={handleLockApp}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
       {/* Filter Bar */}
@@ -345,6 +399,14 @@ export default function App() {
         onToggleDone={handleToggleDone}
         onEditItem={handleEditItem}
         onQuickScheduleAtBlock={handleQuickScheduleAtBlock}
+      />
+
+      {/* App Settings & PIN Security Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onLockApp={handleLockApp}
+        onResetData={handleResetData}
       />
     </div>
   );

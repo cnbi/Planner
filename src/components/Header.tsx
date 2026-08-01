@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, LayoutGrid, FolderKanban, Plus, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, LayoutGrid, FolderKanban, Plus, RotateCcw, CheckCircle2, Lock, Settings } from 'lucide-react';
 import { ViewMode } from '../types';
 import { formatDateTitle, addDays, getTodayISO } from '../utils/time';
 
@@ -12,6 +12,8 @@ interface HeaderProps {
   onResetData: () => void;
   completedCount: number;
   totalCount: number;
+  onLockApp: () => void;
+  onOpenSettings: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -23,6 +25,8 @@ export const Header: React.FC<HeaderProps> = ({
   onResetData,
   completedCount,
   totalCount,
+  onLockApp,
+  onOpenSettings,
 }) => {
   const isToday = currentDate === getTodayISO();
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -51,8 +55,26 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
 
-            {/* Mobile Create Button */}
-            <div className="flex md:hidden items-center gap-2">
+            {/* Mobile Actions */}
+            <div className="flex md:hidden items-center gap-1.5">
+              <button
+                onClick={onLockApp}
+                id="header-mobile-lock-btn"
+                className="p-2.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all"
+                title="Lock App"
+              >
+                <Lock className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={onOpenSettings}
+                id="header-mobile-settings-btn"
+                className="p-2.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all"
+                title="Security & Settings"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+
               <button
                 onClick={onOpenCreateModal}
                 id="header-mobile-add-btn"
@@ -111,9 +133,9 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Right Actions & Stats */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2">
             {/* Progress Badge */}
-            <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 mr-1">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               <div className="text-xs">
                 <span className="font-semibold text-slate-800">
@@ -129,6 +151,27 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
 
+            {/* Lock App Button */}
+            <button
+              onClick={onLockApp}
+              id="header-lock-btn"
+              className="flex items-center gap-1.5 px-3 py-2 text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 rounded-xl transition-all text-xs font-semibold"
+              title="Lock Application Now"
+            >
+              <Lock className="w-3.5 h-3.5 text-slate-600" />
+              <span>Lock App</span>
+            </button>
+
+            {/* Settings Button */}
+            <button
+              onClick={onOpenSettings}
+              id="header-settings-btn"
+              className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all"
+              title="PIN Security & App Settings"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+
             {/* Reset Sample Data Button */}
             <button
               onClick={onResetData}
@@ -143,7 +186,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onOpenCreateModal}
               id="header-desktop-add-btn"
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl shadow-sm transition-all active:scale-98"
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl shadow-sm transition-all active:scale-98 ml-1"
             >
               <Plus className="w-4 h-4" />
               <span>Add Item</span>
