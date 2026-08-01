@@ -1,26 +1,57 @@
+let sharedAudioCtx: AudioContext | null = null;
+
+/**
+ * Pre-unlock Web Audio API Context on explicit user interaction
+ * Plays a silent tone so browser policy allows subsequent alert sounds
+ */
+export function unlockAudioContext(): void {
+  try {
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+
+    if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
+      sharedAudioCtx = new AudioCtx();
+    }
+
+    if (sharedAudioCtx.state === 'suspended') {
+      sharedAudioCtx.resume();
+    }
+
+    // Play a silent 0.1-second buffer tone to register user gesture
+    const osc = sharedAudioCtx.createOscillator();
+    const gain = sharedAudioCtx.createGain();
+    gain.gain.setValueAtTime(0.001, sharedAudioCtx.currentTime); // silent
+    osc.connect(gain);
+    gain.connect(sharedAudioCtx.destination);
+    osc.start(sharedAudioCtx.currentTime);
+    osc.stop(sharedAudioCtx.currentTime + 0.1);
+  } catch (err) {
+    console.warn('AudioContext pre-unlock error:', err);
+  }
+}
+
 /**
  * Web Audio API Chime Synthesizer
- * Plays a pleasant 3-tone notification chime without requiring external audio files.
+ * Plays a pleasant notification chime (double beep / major scale notes)
  */
 export function playNotificationChime(): void {
   try {
     const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AudioCtx) return;
 
-    const ctx = new AudioCtx();
+    const ctx = sharedAudioCtx && sharedAudioCtx.state !== 'closed' ? sharedAudioCtx : new AudioCtx();
     
-    // Resume context if suspended by browser policy
     if (ctx.state === 'suspended') {
       ctx.resume();
     }
 
     const now = ctx.currentTime;
 
-    // Frequencies for a soft major chime: C5, E5, G5
+    // Double beep / chime notes (520Hz and 660Hz as requested, followed by 784Hz)
     const notes = [
-      { freq: 523.25, start: now, duration: 0.25 },
-      { freq: 659.25, start: now + 0.12, duration: 0.35 },
-      { freq: 783.99, start: now + 0.25, duration: 0.6 },
+      { freq: 520, start: now, duration: 0.18 },
+      { freq: 660, start: now + 0.12, duration: 0.28 },
+      { freq: 784, start: now + 0.26, duration: 0.4 },
     ];
 
     notes.forEach(({ freq, start, duration }) => {
@@ -32,7 +63,7 @@ export function playNotificationChime(): void {
 
       // Envelope: smooth attack and decay
       gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(0.2, start + 0.03);
+      gain.gain.linearRampToValueAtTime(0.25, start + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
 
       osc.connect(gain);
@@ -41,14 +72,8 @@ export function playNotificationChime(): void {
       osc.start(start);
       osc.stop(start + duration);
     });
-
-    // Close audio context after completion
-    setTimeout(() => {
-      if (ctx.state !== 'closed') {
-        ctx.close();
-      }
-    }, 1200);
   } catch (err) {
     console.warn('Audio chime playback error:', err);
   }
 }
+

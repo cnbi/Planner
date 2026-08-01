@@ -1,5 +1,5 @@
 import { PlannerItem, Project } from '../types';
-import { playNotificationChime } from './audio';
+import { playNotificationChime, unlockAudioContext } from './audio';
 import { timeToMinutes, getTodayISO, filterItemsForDate } from './time';
 
 export interface ActiveReminder {
@@ -40,9 +40,12 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 }
 
 /**
- * Request notification permissions from user
+ * Request notification permissions from user AND pre-unlock AudioContext for background sounds
  */
 export async function requestNotificationPermission(): Promise<NotificationPermission> {
+  // Always pre-unlock Audio Context on this user gesture
+  unlockAudioContext();
+
   if (!('Notification' in window)) {
     return 'denied';
   }

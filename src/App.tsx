@@ -23,6 +23,7 @@ import { BlockDetailModal } from './components/BlockDetailModal';
 import { PinLockScreen } from './components/PinLockScreen';
 import { SettingsModal } from './components/SettingsModal';
 import { NotificationBanner } from './components/NotificationBanner';
+import { NotificationPromptBanner } from './components/NotificationPromptBanner';
 import {
   ActiveReminder,
   checkUpcomingReminders,
@@ -312,8 +313,10 @@ export default function App() {
     setIsModalOpen(true);
   };
 
-  const handleQuickAddAtHour = (hour: number) => {
-    const timeStr = `${String(hour).padStart(2, '0')}:00`;
+  const handleQuickAddAtHour = (hourOrTime: number | string) => {
+    const timeStr = typeof hourOrTime === 'number'
+      ? `${String(hourOrTime).padStart(2, '0')}:00`
+      : hourOrTime;
     setEditingItem({
       date: currentDate,
       startTime: timeStr,
@@ -383,6 +386,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100/60 text-slate-900 font-sans flex flex-col">
+      {/* Explicit Permission & Sound Prompt Banner */}
+      <NotificationPromptBanner />
+
       {/* 5-Minute In-App Active Reminder Toast Banner */}
       <NotificationBanner
         reminders={activeReminders}
